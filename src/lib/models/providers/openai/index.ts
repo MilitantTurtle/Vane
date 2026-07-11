@@ -135,8 +135,57 @@ class OpenAIProvider extends BaseModelProvider<OpenAIConfig> {
     super(id, name, config);
   }
 
+  private normalizeBaseURL(url: string): string {
+    const trimmed = url.trim().replace(/\/+$/, '');
+    return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
+  }
+
+  private isOfficialOpenAI(): boolean {
+    return (
+      this.normalizeBaseURL(this.config.baseURL) === 'https://api.openai.com/v1'
+    );
+  }
+
+  private async getCompatibleChatModels(): Promise<Model[]> {
+    const response = await fetch(
+      `${this.normalizeBaseURL(this.config.baseURL)}/models`,
+      {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Unable to discover models from the OpenAI-compatible server (${response.status})`,
+      );
+    }
+
+    const body = await response.json();
+    const models = Array.isArray(body?.data) ? body.data : [];
+
+    const discovered = models
+      .filter(
+        (model: any) => typeof model?.id === 'string' && model.id.length > 0,
+      )
+      .map((model: any) => ({
+        name: model.id,
+        key: model.id,
+      }));
+
+    if (discovered.length === 0) {
+      throw new Error(
+        'The OpenAI-compatible server did not advertise a model at /v1/models',
+      );
+    }
+
+    return discovered;
+  }
+
   async getDefaultModels(): Promise<ModelList> {
-    if (this.config.baseURL === 'https://api.openai.com/v1') {
+    if (this.isOfficialOpenAI()) {
       return {
         embedding: defaultEmbeddingModels,
         chat: defaultChatModels,
@@ -145,7 +194,7 @@ class OpenAIProvider extends BaseModelProvider<OpenAIConfig> {
 
     return {
       embedding: [],
-      chat: [],
+      chat: await this.getCompatibleChatModels(),
     };
   }
 
@@ -158,16 +207,22 @@ class OpenAIProvider extends BaseModelProvider<OpenAIConfig> {
         ...defaultModels.embedding,
         ...configProvider.embeddingModels,
       ],
-      chat: [...defaultModels.chat, ...configProvider.chatModels],
+      // A compatible server is authoritative for its live chat models. This
+      // prevents stale, manually saved llama.cpp model IDs from remaining in
+      // the selector after the server loads a different model.
+      chat: this.isOfficialOpenAI()
+        ? [...defaultModels.chat, ...configProvider.chatModels]
+        : defaultModels.chat,
     };
   }
 
   async loadChatModel(key: string): Promise<BaseLLM<any>> {
     const modelList = await this.getModelList();
+    const selected = this.isOfficialOpenAI()
+      ? modelList.chat.find((m) => m.key === key)
+      : (modelList.chat.find((m) => m.key === key) ?? modelList.chat[0]);
 
-    const exists = modelList.chat.find((m) => m.key === key);
-
-    if (!exists) {
+    if (!selected) {
       throw new Error(
         'Error Loading OpenAI Chat Model. Invalid Model Selected',
       );
@@ -175,8 +230,8 @@ class OpenAIProvider extends BaseModelProvider<OpenAIConfig> {
 
     return new OpenAILLM({
       apiKey: this.config.apiKey,
-      model: key,
-      baseURL: this.config.baseURL,
+      model: selected.key,
+      baseURL: this.normalizeBaseURL(this.config.baseURL),
     });
   }
 
@@ -193,7 +248,7 @@ class OpenAIProvider extends BaseModelProvider<OpenAIConfig> {
     return new OpenAIEmbedding({
       apiKey: this.config.apiKey,
       model: key,
-      baseURL: this.config.baseURL,
+      baseURL: this.normalizeBaseURL(this.config.baseURL),
     });
   }
 
