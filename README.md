@@ -1,11 +1,12 @@
 # Vane 🔍
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/ItzCrazyKns/Vane?style=social)](https://github.com/ItzCrazyKns/Vane/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/ItzCrazyKns/Vane?style=social)](https://github.com/ItzCrazyKns/Vane/network/members)
-[![GitHub watchers](https://img.shields.io/github/watchers/ItzCrazyKns/Vane?style=social)](https://github.com/ItzCrazyKns/Vane/watchers)
-[![Docker Pulls](https://img.shields.io/docker/pulls/itzcrazykns1337/vane?color=blue)](https://hub.docker.com/r/itzcrazykns1337/vane)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ItzCrazyKns/Vane/blob/master/LICENSE)
-[![GitHub last commit](https://img.shields.io/github/last-commit/ItzCrazyKns/Vane?color=green)](https://github.com/ItzCrazyKns/Vane/commits/master)
+[![GitHub Repo stars](https://img.shields.io/github/stars/MilitantTurtle/Vane?style=social)](https://github.com/MilitantTurtle/Vane/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/MilitantTurtle/Vane?style=social)](https://github.com/MilitantTurtle/Vane/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/MilitantTurtle/Vane?style=social)](https://github.com/MilitantTurtle/Vane/watchers)
+[![Build Linux container](https://github.com/MilitantTurtle/Vane/actions/workflows/build-container.yml/badge.svg)](https://github.com/MilitantTurtle/Vane/actions/workflows/build-container.yml)
+[![GHCR image](https://img.shields.io/badge/GHCR-ghcr.io%2Fmilitantturtle%2Fvane-blue)](https://github.com/MilitantTurtle/Vane/pkgs/container/vane)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/MilitantTurtle/Vane?color=green)](https://github.com/MilitantTurtle/Vane/commits/master)
 [![Discord](https://dcbadge.limes.pink/api/server/26aArMy8tT?style=flat)](https://discord.gg/26aArMy8tT)
 
 > [!NOTE]
@@ -23,7 +24,7 @@ Vane is a **privacy-focused AI answering engine** that runs entirely on your own
 
 ![preview](.assets/vane-screenshot.png)
 
-Want to know more about its architecture and how it works? You can read it [here](https://github.com/ItzCrazyKns/Vane/tree/master/docs/architecture/README.md).
+Want to know more about its architecture and how it works? You can read it [here](docs/architecture/README.md).
 
 ## ✨ Features
 
@@ -87,15 +88,19 @@ We'd also like to thank the following partners for their generous support:
 
 ## Installation
 
-There are mainly 2 ways of installing Vane - With Docker, Without Docker. Using Docker is highly recommended.
+This fork uses the **slim Vane container** and expects a separate SearXNG instance. It does not bundle SearXNG.
 
-### Docker Compose for this fork
+Before starting, make sure your SearXNG instance:
 
-These examples use the slim Vane image and expect an existing SearXNG instance. Replace the placeholder URL with an address reachable from the Docker host. Change the left side of `3000:3000` if port 3000 is already in use.
+- Is reachable from the Docker host and the Vane container.
+- Has JSON response format enabled.
+- Has the Wolfram Alpha search engine enabled.
 
-#### Option 1: Use the prebuilt Linux image
+Replace `http://your-searxng-host:8080` below with the address that the Vane container can reach. Change the left side of `3000:3000` if port 3000 is already in use.
 
-The public image is built for Linux AMD64 by GitHub Actions, so Portainer or Docker Compose can pull it without registry credentials:
+### Option 1: Use the prebuilt Linux image
+
+This is the recommended option for Linux AMD64 Docker hosts and Portainer. The public image is built by GitHub Actions and does not require registry credentials.
 
 ```yaml
 services:
@@ -114,15 +119,24 @@ volumes:
   vane-data:
 ```
 
-Start it with:
+Save this as `compose.yaml` and run:
 
 ```bash
 docker compose up -d
 ```
 
-#### Option 2: Build the image yourself
+In Portainer, paste the same YAML into a new stack's Web editor.
 
-Clone this fork, save the following as `compose.yaml` in the repository root, then run `docker compose up -d --build`:
+### Option 2: Build this fork yourself
+
+Clone this fork on the Docker host:
+
+```bash
+git clone https://github.com/MilitantTurtle/Vane.git
+cd Vane
+```
+
+Save the following as `compose.yaml` in the repository root:
 
 ```yaml
 services:
@@ -144,102 +158,55 @@ volumes:
   vane-data:
 ```
 
-### Getting Started with Docker (Recommended)
-
-Vane can be easily run using Docker. Simply run the following command:
+Build and start it:
 
 ```bash
-docker run -d -p 3000:3000 -v vane-data:/home/vane/data --name vane itzcrazykns1337/vane:latest
+docker compose up -d --build
 ```
 
-This will pull and start the Vane container with the bundled SearxNG search engine. Once running, open your browser and navigate to http://localhost:3000. You can then configure your settings (API keys, models, etc.) directly in the setup screen.
+For Portainer, use a Git repository stack pointing at this fork so the Docker build context is available. The prebuilt-image option is quicker and simpler.
 
-**Note**: The image includes both Vane and SearxNG, so no additional setup is required. The `-v` flags create persistent volumes for your data and uploaded files.
+### Configure Vane
 
-#### Using Vane with Your Own SearxNG Instance
+Open `http://<docker-host>:3000` (or your chosen host port) and complete the setup screen. For a local OpenAI-compatible server such as llama.cpp:
 
-If you already have SearxNG running, you can use the slim version of Vane:
+- Enter an API URL reachable from the Vane container.
+- If your server does not require an API key, enter any non-empty placeholder in Vane's API-key field.
+- This fork discovers the currently loaded chat model from `/v1/models`; you do not need to keep a static model name synchronized manually.
+
+Settings and history are stored in the `vane-data` volume.
+
+### Updating
+
+For the prebuilt image:
 
 ```bash
-docker run -d -p 3000:3000 -e SEARXNG_API_URL=http://your-searxng-url:8080 -v vane-data:/home/vane/data --name vane itzcrazykns1337/vane:slim-latest
+docker compose pull
+docker compose up -d
 ```
 
-**Important**: Make sure your SearxNG instance has:
+For a local source build:
 
-- JSON format enabled in the settings
-- Wolfram Alpha search engine enabled
+```bash
+git pull
+docker compose up -d --build
+```
 
-Replace `http://your-searxng-url:8080` with your actual SearxNG URL. Then configure your AI provider settings in the setup screen at http://localhost:3000.
+See the [installation documentation](docs/installation) for additional background inherited from upstream. Where those documents differ, use the fork-specific instructions above.
 
-#### Advanced Setup (Building from Source)
+## Troubleshooting
 
-If you prefer to build from source or need more control:
+### Local OpenAI-compatible servers
 
-1. Ensure Docker is installed and running on your system.
-2. Clone the Vane repository:
+If Vane says no chat-model provider is configured:
 
-   ```bash
-   git clone https://github.com/ItzCrazyKns/Vane.git
-   ```
+1. Confirm the API URL is reachable from inside the Vane container. A server bound only to `127.0.0.1` will not be reachable from another machine or container.
+2. Confirm the server exposes an OpenAI-compatible `/v1/models` endpoint and currently has a model loaded.
+3. Enter a non-empty placeholder in Vane's API-key field if the server itself does not require a key.
 
-3. After cloning, navigate to the directory containing the project files.
+This fork reads the live model list automatically and falls back to the first currently advertised model when a previously selected model is no longer loaded.
 
-4. Build and run using Docker:
-
-   ```bash
-   docker build -t vane .
-   docker run -d -p 3000:3000 -v vane-data:/home/vane/data --name vane vane
-   ```
-
-5. Access Vane at http://localhost:3000 and configure your settings in the setup screen.
-
-**Note**: After the containers are built, you can start Vane directly from Docker without having to open a terminal.
-
-### Non-Docker Installation
-
-1. Install SearXNG and allow `JSON` format in the SearXNG settings. Make sure Wolfram Alpha search engine is also enabled.
-2. Clone the repository:
-
-   ```bash
-   git clone https://github.com/ItzCrazyKns/Vane.git
-   cd Vane
-   ```
-
-3. Install dependencies:
-
-   ```bash
-   npm i
-   ```
-
-4. Build the application:
-
-   ```bash
-   npm run build
-   ```
-
-5. Start the application:
-
-   ```bash
-   npm run start
-   ```
-
-6. Open your browser and navigate to http://localhost:3000 to complete the setup and configure your settings (API keys, models, SearxNG URL, etc.) in the setup screen.
-
-**Note**: Using Docker is recommended as it simplifies the setup process, especially for managing environment variables and dependencies.
-
-See the [installation documentation](https://github.com/ItzCrazyKns/Vane/tree/master/docs/installation) for more information like updating, etc.
-
-### Troubleshooting
-
-#### Local OpenAI-API-Compliant Servers
-
-If Vane tells you that you haven't configured any chat model providers, ensure that:
-
-1. Your server is running on `0.0.0.0` (not `127.0.0.1`) and on the same port you put in the API URL.
-2. You have specified the correct model name loaded by your local LLM server.
-3. You have specified the correct API key, or if one is not defined, you have put _something_ in the API key field and not left it empty.
-
-#### Ollama Connection Errors
+### Ollama Connection Errors
 
 If you're encountering an Ollama connection error, it is likely due to the backend being unable to connect to Ollama's API. To fix this issue you can:
 
@@ -258,7 +225,7 @@ If you're encountering an Ollama connection error, it is likely due to the backe
 
    - Ensure that the port (default is 11434) is not blocked by your firewall.
 
-#### Lemonade Connection Errors
+### Lemonade Connection Errors
 
 If you're encountering a Lemonade connection error, it is likely due to the backend being unable to connect to Lemonade's API. To fix this issue you can:
 
@@ -290,18 +257,11 @@ If you wish to use Vane as an alternative to traditional search engines like Goo
 
 Vane also provides an API for developers looking to integrate its powerful search engine into their own applications. You can run searches, use multiple models and get answers to your queries.
 
-For more details, check out the full documentation [here](https://github.com/ItzCrazyKns/Vane/tree/master/docs/API/SEARCH.md).
+For more details, check out the full documentation [here](docs/API/SEARCH.md).
 
 ## Expose Vane to network
 
 Vane runs on Next.js and handles all API requests. It works right away on the same network and stays accessible even with port forwarding.
-
-## One-Click Deployment
-
-[![Deploy to Sealos](https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg)](https://usw.sealos.io/?openapp=system-template%3FtemplateName%3Dperplexica)
-[![Deploy to RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/?app_id=267)
-[![Run on ClawCloud](https://raw.githubusercontent.com/ClawCloud/Run-Template/refs/heads/main/Run-on-ClawCloud.svg)](https://template.run.claw.cloud/?referralCode=U11MRQ8U9RM4&openapp=system-fastdeploy%3FtemplateName%3Dperplexica)
-[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/vps/docker-hosting?compose_url=https://raw.githubusercontent.com/ItzCrazyKns/Vane/refs/heads/master/docker-compose.yaml)
 
 ## Upcoming Features
 
@@ -327,6 +287,6 @@ Vane is built on the idea that AI and large language models should be easy for e
 
 ## Help and Support
 
-If you have any questions or feedback, please feel free to reach out to us. You can create an issue on GitHub or join our Discord server. There, you can connect with other users, share your experiences and reviews, and receive more personalized help. [Click here](https://discord.gg/EFwsmQDgAu) to join the Discord server. To discuss matters outside of regular support, feel free to contact me on Discord at `itzcrazykns`.
+For problems specific to this fork, [open an issue here](https://github.com/MilitantTurtle/Vane/issues). For general Vane discussion and upstream support, use the [upstream Discord server](https://discord.gg/EFwsmQDgAu).
 
 Thank you for exploring Vane, the AI-powered search engine designed to enhance your search experience. We are constantly working to improve Vane and expand its capabilities. We value your feedback and contributions which help us make Vane even better. Don't forget to check back for updates and new features!
