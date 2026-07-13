@@ -8,6 +8,17 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/ItzCrazyKns/Vane?color=green)](https://github.com/ItzCrazyKns/Vane/commits/master)
 [![Discord](https://dcbadge.limes.pink/api/server/26aArMy8tT?style=flat)](https://discord.gg/26aArMy8tT)
 
+> [!NOTE]
+> **What this fork changes**
+>
+> This fork stays close to [ItzCrazyKns/Vane](https://github.com/ItzCrazyKns/Vane) and adds better support for local OpenAI-compatible servers such as llama.cpp:
+>
+> - Chat models are discovered automatically from the server's `/v1/models` endpoint.
+> - If a previously selected model is no longer loaded, Vane falls back to the first model currently advertised by the server.
+> - A public Linux AMD64 slim image is built by GitHub Actions and published as `ghcr.io/militantturtle/vane:latest`.
+>
+> The rest of Vane's behaviour remains unchanged from upstream.
+
 Vane is a **privacy-focused AI answering engine** that runs entirely on your own hardware. It combines knowledge from the vast internet with support for **local LLMs** (Ollama) and cloud providers (OpenAI, Claude, Groq), delivering accurate answers with **cited sources** while keeping your searches completely private.
 
 ![preview](.assets/vane-screenshot.png)
@@ -77,6 +88,61 @@ We'd also like to thank the following partners for their generous support:
 ## Installation
 
 There are mainly 2 ways of installing Vane - With Docker, Without Docker. Using Docker is highly recommended.
+
+### Docker Compose for this fork
+
+These examples use the slim Vane image and expect an existing SearXNG instance. Replace the placeholder URL with an address reachable from the Docker host. Change the left side of `3000:3000` if port 3000 is already in use.
+
+#### Option 1: Use the prebuilt Linux image
+
+The public image is built for Linux AMD64 by GitHub Actions, so Portainer or Docker Compose can pull it without registry credentials:
+
+```yaml
+services:
+  vane:
+    image: ghcr.io/militantturtle/vane:latest
+    container_name: vane
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      SEARXNG_API_URL: "http://your-searxng-host:8080"
+    volumes:
+      - vane-data:/home/vane/data
+
+volumes:
+  vane-data:
+```
+
+Start it with:
+
+```bash
+docker compose up -d
+```
+
+#### Option 2: Build the image yourself
+
+Clone this fork, save the following as `compose.yaml` in the repository root, then run `docker compose up -d --build`:
+
+```yaml
+services:
+  vane:
+    build:
+      context: .
+      dockerfile: Dockerfile.slim
+    image: vane-local:latest
+    container_name: vane
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      SEARXNG_API_URL: "http://your-searxng-host:8080"
+    volumes:
+      - vane-data:/home/vane/data
+
+volumes:
+  vane-data:
+```
 
 ### Getting Started with Docker (Recommended)
 
